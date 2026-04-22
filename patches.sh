@@ -8,28 +8,32 @@ if [ -f "$QCOM_DEFS" ] && ! grep -q "UM 4.19 upgraded to UM 5.15" "$QCOM_DEFS"; 
     echo "    [*] Applied 5.15 upgrade logic."
 fi
 
-# 2. THE MASS HEADER FIX
-HEADER_PATH="device/xiaomi/creek-kernel/kernel-headers/usr/include"
 
-TARGET_DIRS=(
-    "hardware/qcom-caf/sm8550/audio/graphservices/ar_osal"
-    "hardware/qcom-caf/sm8250/display/sde-drm"
-    "hardware/qcom-caf/sm8250/display/gralloc"
+# 2. HEADER LIB FIX (SAFE METHOD)
+TARGET_BPS=(
+    "hardware/qcom-caf/sm8550/audio/graphservices/ar_osal/Android.bp"
+    "hardware/qcom-caf/sm8250/display/sde-drm/Android.bp"
+    "hardware/qcom-caf/sm8250/display/gralloc/Android.bp"
 )
 
-for DIR in "${TARGET_DIRS[@]}"; do
-    BP="$DIR/Android.bp"
+for BP in "${TARGET_BPS[@]}"; do
     if [ -f "$BP" ]; then
-        if ! grep -q "$HEADER_PATH" "$BP"; then
-            echo "    [*] Patching $BP..."
-            # Using a safer approach: find the line and insert after it
-            # This avoids the \n issues in different sed versions
-            sed -i "s|include_dirs: \[|include_dirs: \[ \n        \"$HEADER_PATH\",|g" "$BP"
-            
-            # Double check: if it failed to create a newline, fix it with a literal break
-            if grep -q "\[ n" "$BP"; then
-                 sed -i "s|\[ n|\[\n|g" "$BP"
+        if ! grep -q "extra_kernel_headers" "$BP"; then
+            echo "    [*] Injecting extra_kernel_headers into $BP..."
+
+            # Insert after qti_audio_kernel_uapi if present
+            if grep -q '"qti_audio_kernel_uapi"' "$BP"; then
+                sed -i '/"qti_audio_kernel_uapi"/a\        "extra_kernel_headers",' "$BP"
+
+            # Fallback: insert after audio_kernel_headers
+            elif grep -q '"audio_kernel_headers"' "$BP"; then
+                sed -i '/"audio_kernel_headers"/a\        "extra_kernel_headers",' "$BP"
+
+            else
+                echo "    [!] Skipped $BP (no known header_libs anchor found)"
             fi
+        else
+            echo "    [=] Already patched: $BP"
         fi
     fi
 done
