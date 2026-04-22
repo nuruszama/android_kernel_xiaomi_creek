@@ -19,6 +19,26 @@ if [ -f "$BP_FILE" ]; then
     fi
 fi
 
+# Fix 3: Missing drm/sde_drm.h in sde-drm
+SDE_DRM_BP="hardware/qcom-caf/sm8250/display/sde-drm/Android.bp"
+if [ -f "$SDE_DRM_BP" ]; then
+    if ! grep -q "device/xiaomi/creek-kernel/include/uapi" "$SDE_DRM_BP"; then
+        # Inject path into the include_dirs block
+        sed -i '/include_dirs: \[/a \        "device/xiaomi/creek-kernel/include/uapi",' "$SDE_DRM_BP"
+        echo "    [*] Patched $SDE_DRM_BP for sde_drm.h"
+    fi
+fi
+
+# Fix 4: Missing media/msm_media_info.h in Gralloc
+GRALLOC_BP="hardware/qcom-caf/sm8250/display/gralloc/Android.bp"
+if [ -f "$GRALLOC_BP" ]; then
+    if ! grep -q "device/xiaomi/creek-kernel/include/uapi" "$GRALLOC_BP"; then
+        # Gralloc often uses common_deps or specific library blocks; we'll target the include_dirs
+        sed -i '/include_dirs: \[/a \        "device/xiaomi/creek-kernel/include/uapi",' "$GRALLOC_BP"
+        echo "    [*] Patched $GRALLOC_BP for msm_media_info.h"
+    fi
+fi
+
 # Add more patches here as they come up...
 
 echo "[+] All device patches applied successfully."
