@@ -2,6 +2,9 @@
 cc_library_headers {
     name: "extra_kernel_headers",
     vendor: true,
+    vendor_available: true,
+    visibility: ["//visibility:public"],
+
     export_include_dirs: [
         "kernel-headers",
     ],
